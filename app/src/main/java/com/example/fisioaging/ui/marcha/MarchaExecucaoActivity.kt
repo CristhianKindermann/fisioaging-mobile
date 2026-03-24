@@ -1,4 +1,4 @@
-package com.example.fisioaging
+package com.example.fisioaging.ui.marcha
 
 import android.content.Context
 import android.hardware.Sensor
@@ -13,6 +13,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.fisioaging.R
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -48,7 +51,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     private var acelerometro: Sensor? = null
 
     // Lista para armazenamento temporário dos dados brutos
-    private val dadosColetados = mutableListOf<org.json.JSONObject>()
+    private val dadosColetados = mutableListOf<JSONObject>()
     private var tempoInicioTeste: Long = 0
 
     // Variáveis do Algoritmo de Contagem
@@ -90,7 +93,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun configurarSensores() {
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
 
         // Prioriza o Acelerômetro Linear para remover gravidade automaticamente
         val sensorLinear = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
@@ -182,7 +185,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
                 val z = eventoNaoNulo.values[2]
 
                 //  Cria objeto JSON para o registro atual
-                val registro = org.json.JSONObject()
+                val registro = JSONObject()
                 registro.put("time", tempoRelativo)
                 registro.put("x", x)
                 registro.put("y", y)
@@ -221,24 +224,23 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val nomeArquivo = "MARCHA_$timestamp.json"
 
-
         try {
-            // Criamos o objeto principal que conterá todos os dados
-            val jsonFinal = org.json.JSONObject()
-            jsonFinal.put("tipo_teste", "MARCHA_ESTACIONARIA")
-            jsonFinal.put("data_hora", timestamp)
-            jsonFinal.put("total_repeticoes", contagemRepeticoes)
+            val root = org.json.JSONObject()
 
-            // Transformamos nossa lista em um JSONArray
+            root.put("tipo_teste", "MARCHA") // Identificador para o servidor
+            root.put("data_hora", timestamp)
+            root.put("total_repeticoes_app", contagemRepeticoes)
+
+            // Transforma a lista de registros em um JSONArray
             val jsonArrayRegistros = org.json.JSONArray(dadosColetados)
-            jsonFinal.put("registros", jsonArrayRegistros)
+            root.put("registros", jsonArrayRegistros)
 
-            // Escrita do arquivo
-            val fileOutputStream: FileOutputStream = openFileOutput(nomeArquivo, Context.MODE_PRIVATE)
-            fileOutputStream.write(jsonFinal.toString(4).toByteArray()) // O '4' é para identar (ficar bonitinho)
+            // Escrita do arquivo na memória interna
+            val fileOutputStream: java.io.FileOutputStream = openFileOutput(nomeArquivo, Context.MODE_PRIVATE)
+            fileOutputStream.write(root.toString(4).toByteArray()) // O '4' organiza o texto (identação)
             fileOutputStream.close()
 
-            Toast.makeText(this, "Teste salvo em JSON!", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Teste de Marcha salvo!", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Erro ao salvar JSON", Toast.LENGTH_SHORT).show()

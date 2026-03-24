@@ -1,4 +1,4 @@
-package com.example.fisioaging
+package com.example.fisioaging.ui.sincronia
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,6 +6,8 @@ import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.fisioaging.R
+import com.example.fisioaging.model.TesteSalvo
 
 // REMOVIDO: data class TesteSalvo (Ela deve existir apenas no arquivo TesteSalvo.kt)
 // REMOVIDO: import androidx.compose.ui.test.isSelected (Isso é para testes e causa erro)

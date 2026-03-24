@@ -1,4 +1,4 @@
-package com.example.fisioaging
+package com.example.fisioaging.ui.sincronia
 
 import android.os.Bundle
 import android.widget.Button
@@ -6,9 +6,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
+import com.example.fisioaging.R
+import com.example.fisioaging.model.TesteSalvo
+import kotlin.collections.forEach
 
 class SincroniaActivity : AppCompatActivity() {
 

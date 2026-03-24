@@ -1,6 +1,5 @@
-package com.example.fisioaging
+package com.example.fisioaging.ui.utt
 
-import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -13,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.fisioaging.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.FileOutputStream
@@ -87,7 +87,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun configurarSensores() {
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         // O UTT utiliza o acelerômetro (preferencialmente linear se disponível, ou comum)
         acelerometro = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     }
@@ -188,7 +188,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
             jsonFinal.put("total_repeticoes_app", contagemRepeticoes)
             jsonFinal.put("registros", JSONArray(dadosColetados))
 
-            val fos: FileOutputStream = openFileOutput(nomeArquivo, Context.MODE_PRIVATE)
+            val fos: FileOutputStream = openFileOutput(nomeArquivo, MODE_PRIVATE)
             fos.write(jsonFinal.toString(4).toByteArray())
             fos.close()
 
