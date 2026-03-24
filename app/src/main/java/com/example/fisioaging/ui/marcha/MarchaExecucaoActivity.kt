@@ -7,7 +7,6 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -22,7 +21,7 @@ import kotlin.math.sqrt
 
 private enum class EstadoTeste { PRONTO, RODANDO, CONCLUIDO }
 
-class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
+class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
     // Componentes da UI
     private lateinit var textTimer: TextView
@@ -42,14 +41,14 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
 
     // Controle do Timer
     private var timer: CountDownTimer? = null
-    private val tempoTotalEmMillis: Long = 30 * 1000 // Configurado para 30s (PoC)
+    private val tempoTotalEmMillis: Long = 2 * 60 * 1000 // 2 minutos
 
     // Sensor e Dados
     private lateinit var sensorManager: SensorManager
     private var acelerometro: Sensor? = null
 
     // Lista para armazenamento temporário dos dados brutos
-    private val dadosColetados = mutableListOf<String>()
+    private val dadosColetados = mutableListOf<org.json.JSONObject>()
     private var tempoInicioTeste: Long = 0
 
     // Variáveis do Algoritmo de Contagem
@@ -62,7 +61,7 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_teste_em_andamento)
+        setContentView(R.layout.activity_marcha_execucao)
 
         supportActionBar?.title = "2 Minutos Marcha estacionária"
 
@@ -137,7 +136,7 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
         }
 
         btnSave.setOnClickListener {
-            salvarDadosCSV()
+            salvarDadosJSON()
             finish()
         }
     }
@@ -151,7 +150,7 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
             EstadoTeste.PRONTO -> {
                 textTimer.visibility = View.VISIBLE
                 textResultado.visibility = View.GONE
-                textTimer.text = "0:30"
+                textTimer.text = "2:00"
                 lblStatus.text = "Tempo Restante"
                 dadosColetados.clear()
                 layoutBotaoPlay.visibility = View.VISIBLE
@@ -182,17 +181,20 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
                 val y = eventoNaoNulo.values[1]
                 val z = eventoNaoNulo.values[2]
 
-                // Armazena dados brutos formatados para padrão BR (vírgula)
-                val linhaCsv = "$tempoRelativo;${x.toString().replace('.', ',')};${y.toString().replace('.', ',')};${z.toString().replace('.', ',')}"
-                dadosColetados.add(linhaCsv)
+                //  Cria objeto JSON para o registro atual
+                val registro = org.json.JSONObject()
+                registro.put("time", tempoRelativo)
+                registro.put("x", x)
+                registro.put("y", y)
+                registro.put("z", z)
 
-                // Algoritmo de contagem em tempo real
+                dadosColetados.add(registro)
+
+                // Algoritmo de contagem
                 val magnitude = sqrt((x * x + y * y + z * z).toDouble())
-
                 if (magnitude > LIMITE_PICO && (tempoAtual - ultimoPicoTempo > COOLDOWN_PICO_MS)) {
                     contagemRepeticoes++
                     ultimoPicoTempo = tempoAtual
-                    Log.d("FISIO_AGING", "Pico detectado: $contagemRepeticoes")
                 }
             }
         }
@@ -213,24 +215,33 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
         sensorManager.unregisterListener(this)
     }
 
-    private fun salvarDadosCSV() {
+    private fun salvarDadosJSON() {
         if (dadosColetados.isEmpty()) return
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        // Prefixo MARCHA para identificar o tipo do teste na lista
-        val nomeArquivo = "MARCHA_$timestamp.csv"
+        val nomeArquivo = "MARCHA_$timestamp.json"
+
 
         try {
+            // Criamos o objeto principal que conterá todos os dados
+            val jsonFinal = org.json.JSONObject()
+            jsonFinal.put("tipo_teste", "MARCHA_ESTACIONARIA")
+            jsonFinal.put("data_hora", timestamp)
+            jsonFinal.put("total_repeticoes", contagemRepeticoes)
+
+            // Transformamos nossa lista em um JSONArray
+            val jsonArrayRegistros = org.json.JSONArray(dadosColetados)
+            jsonFinal.put("registros", jsonArrayRegistros)
+
+            // Escrita do arquivo
             val fileOutputStream: FileOutputStream = openFileOutput(nomeArquivo, Context.MODE_PRIVATE)
-            fileOutputStream.write("time;x;y;z\n".toByteArray())
-            dadosColetados.forEach { linha ->
-                fileOutputStream.write("$linha\n".toByteArray())
-            }
+            fileOutputStream.write(jsonFinal.toString(4).toByteArray()) // O '4' é para identar (ficar bonitinho)
             fileOutputStream.close()
-            Toast.makeText(this, "Teste salvo com sucesso", Toast.LENGTH_LONG).show()
+
+            Toast.makeText(this, "Teste salvo em JSON!", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(this, "Erro ao salvar arquivo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Erro ao salvar JSON", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -245,7 +256,7 @@ class TesteEmAndamentoActivity : AppCompatActivity(), SensorEventListener {
             override fun onFinish() {
                 pararColetaSensor()
                 atualizarVisibilidade(EstadoTeste.CONCLUIDO)
-                Toast.makeText(this@TesteEmAndamentoActivity, "Teste Concluído!", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MarchaExecucaoActivity, "Teste Concluído!", Toast.LENGTH_LONG).show()
             }
         }.start()
     }
