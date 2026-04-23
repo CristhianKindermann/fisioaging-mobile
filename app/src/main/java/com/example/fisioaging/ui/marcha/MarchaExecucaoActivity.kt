@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -23,6 +24,7 @@ import java.util.*
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
+import java.net.URLEncoder
 
 private enum class EstadoTeste { PRONTO, RODANDO, CONCLUIDO }
 
@@ -196,7 +198,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
         val idPac = paciente?.id ?: 0
         val nomePac = paciente?.name?.replace(" ", "") ?: "Desconhecido"
         val emailPac = paciente?.email?.replace(" ", "") ?: "Desconhecido"
-
+        val emailCodificado = URLEncoder.encode(emailPac, "UTF-8")
         val generoPac = paciente?.genre ?: "Não informado"
 
         val idadePac = calcularIdade(paciente?.birthDate)
@@ -204,15 +206,17 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
         val dataStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         val horaStr = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
 
-        val nomeArquivo = "MARCHA_${dataStr}_${horaStr}_${idPac}_${nomePac}_${emailPac}.json"
-
+        val nomeArquivo = "MARCHA_${dataStr}_${horaStr}_${idPac}_${nomePac}_${emailCodificado}.json"
         val json = JSONObject()
-        json.put("userId", idPac)
-        json.put("sexo", generoPac)
-        json.put("idade", idadePac)
+
         json.put("tipo_teste", "MARCHA")
         json.put("data_hora", "${dataStr}_${horaStr}")
+        json.put("sensor", "ANDROID")
+        json.put("frequencia", 50)
         json.put("total_repeticoes_app", contagemRepeticoes)
+        json.put("sexo", generoPac)
+        json.put("idade", idadePac)
+        json.put("massa_kg", 70.0)
         json.put("registros", JSONArray(dadosColetados))
 
         try {

@@ -1,5 +1,7 @@
 package com.example.fisioaging.network
 
+import com.example.fisioaging.model.LoginRequest
+import com.example.fisioaging.model.LoginResponse
 import com.example.fisioaging.model.TesteRequest
 import com.example.fisioaging.model.Usuario
 import retrofit2.Response
@@ -10,6 +12,11 @@ import retrofit2.http.Query
 
 
 interface ApiService {
+    @POST("auth/login")
+    suspend fun login(
+        @Body body: LoginRequest
+    ): LoginResponse
+
     @GET("users/all")
     suspend fun getUsuarios(): List<Usuario>
 
