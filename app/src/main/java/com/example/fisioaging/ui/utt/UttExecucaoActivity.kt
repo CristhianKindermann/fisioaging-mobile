@@ -18,6 +18,7 @@ import com.example.fisioaging.model.Usuario
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.FileOutputStream
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
 import java.time.LocalDate
@@ -195,25 +196,25 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
         val idPac = paciente?.id ?: 0
         val nomePac = paciente?.name?.replace(" ", "") ?: "Desconhecido"
         val emailPac = paciente?.email?.replace(" ", "") ?: "Desconhecido"
-        val emailSeguro = emailPac
-            .replace("@", "-at-")
-            .replace(".", "-")
+        val emailCodificado = URLEncoder.encode(emailPac, "UTF-8")
         val generoPac = paciente?.genre ?: "N/A"
         val idadePac = calcularIdade(paciente?.birthDate)
 
         val dataStr = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         val horaStr = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
-        val nomeArquivo = "MARCHA_${dataStr}_${horaStr}_${idPac}_${nomePac}_${emailPac}.json"
+        val nomeArquivo = "UTT_${dataStr}_${horaStr}_${idPac}_${nomePac}_${emailCodificado}.json"
 
         val json = JSONObject()
-        json.put("userId", idPac)
+        json.put("tipo_teste", "UTT")
+        json.put("data_hora", "${dataStr}_${horaStr}")
+        json.put("sensor", "ANDROID")
+        json.put("frequencia", 50)
         json.put("sexo", generoPac)
         json.put("idade", idadePac)
 
         // NOVO CAMPO SOLICITADO
-        json.put("peso", pesoPaciente)
+        json.put("massa_kg", pesoPaciente)
 
-        json.put("tipo_teste", "UTT")
         json.put("data_hora", "${dataStr}_${horaStr}")
         json.put("total_repeticoes_app", contagemRepeticoes)
         json.put("registros", JSONArray(dadosColetados))

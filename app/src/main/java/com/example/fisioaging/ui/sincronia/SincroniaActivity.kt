@@ -1,12 +1,14 @@
 package com.example.fisioaging.ui.sincronia
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.fisioaging.R
+import com.example.fisioaging.model.LoginRequest
 import com.example.fisioaging.model.TesteRequest
 import com.example.fisioaging.model.TesteSalvo
 import com.example.fisioaging.network.RetrofitClient
@@ -16,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.log
-
+import java.net.URLDecoder
 class SincroniaActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
@@ -53,6 +55,7 @@ class SincroniaActivity : AppCompatActivity() {
     }
 
     private fun carregarTestesSalvos() {
+
         listaTestesSalvos.clear()
         val diretorioArquivos = filesDir
 
@@ -105,6 +108,7 @@ class SincroniaActivity : AppCompatActivity() {
     }
 
     private fun apagarArquivosSelecionados() {
+
         val selecionados = adapter.getItensSelecionados()
         if (selecionados.isEmpty()) {
             Toast.makeText(this, "Nenhum teste selecionado", Toast.LENGTH_SHORT).show()
@@ -117,6 +121,7 @@ class SincroniaActivity : AppCompatActivity() {
     }
 
     private fun sincronizarArquivosSelecionados() {
+
         val selecionados = adapter.getItensSelecionados()
 
         if (selecionados.isEmpty()) {
@@ -124,34 +129,62 @@ class SincroniaActivity : AppCompatActivity() {
             return
         }
 
-        Toast.makeText(this, "Enviando ${selecionados.size} testes...", Toast.LENGTH_LONG).show()
-
         CoroutineScope(Dispatchers.IO).launch {
-            val gson = Gson()
+            try {
+                val apiSemToken = RetrofitClient.create()
 
-            selecionados.forEach { testeSalvo ->
-                try {
-                    val json = testeSalvo.arquivo.readText()
-
-                    val request = gson.fromJson(json, TesteRequest::class.java)
-                    println(testeSalvo.emailPaciente)
-
-
-                    RetrofitClient.instance.enviarTeste(
-                        email = testeSalvo.emailPaciente,
-                        body = request
+                val loginResponse = apiSemToken.login(
+                    LoginRequest(
+                        email = "string",
+                        password = "string"
                     )
+                )
 
-                    testeSalvo.arquivo.delete()
+                val token = loginResponse.token
 
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                Log.d("LOGIN", "Token: $token")
+
+                val api = RetrofitClient.create(token)
+
+                val gson = Gson()
+
+                selecionados.forEach { testeSalvo ->
+                    try {
+                        val json = testeSalvo.arquivo.readText()
+
+                        val request = gson.fromJson(json, TesteRequest::class.java)
+
+                        val emailDecodificado = URLDecoder.decode(testeSalvo.emailPaciente, "UTF-8")
+
+                        val response = api.enviarTeste(
+                            email = emailDecodificado.trim(),
+                            body = request
+                        )
+
+                        Log.d("RESPONSE", response.toString())
+
+                        if (response.isSuccessful) {
+                            testeSalvo.arquivo.delete()
+                        } else {
+                            Log.e("SYNC", "Erro: ${response.code()}")
+                        }
+
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
-            }
 
-            withContext(Dispatchers.Main) {
-                Toast.makeText(this@SincroniaActivity, "Sincronização concluída!", Toast.LENGTH_SHORT).show()
-                carregarTestesSalvos()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@SincroniaActivity, "Sincronização concluída!", Toast.LENGTH_SHORT).show()
+                    carregarTestesSalvos()
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@SincroniaActivity, "Erro ao autenticar", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
