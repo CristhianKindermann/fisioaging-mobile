@@ -2,6 +2,7 @@ package com.example.fisioaging.network
 
 import com.example.fisioaging.model.LoginRequest
 import com.example.fisioaging.model.LoginResponse
+import com.example.fisioaging.model.RelatorioTesteResponse
 import com.example.fisioaging.model.TesteRequest
 import com.example.fisioaging.model.TesteResponse
 import com.example.fisioaging.model.Usuario
@@ -37,4 +38,10 @@ interface ApiService {
     suspend fun getTestesPaciente(
         @Query("email") email: String
     ): List<TesteResponse>
+
+    @GET("users/tests/{id}/result")
+    suspend fun getRelatorioTeste(
+        @Path("id") id: Long,
+        @Query("email") email: String
+    ): RelatorioTesteResponse
 }

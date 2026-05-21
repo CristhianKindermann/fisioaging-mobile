@@ -1,22 +1,44 @@
 package com.example.fisioaging.ui.historico
 
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.fisioaging.R
+import com.example.fisioaging.model.RelatorioTesteResponse
 import com.example.fisioaging.model.TesteResponse
+import com.example.fisioaging.model.Usuario
+import com.example.fisioaging.network.RetrofitClient
+import com.example.fisioaging.util.SessionManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ResultadoTesteActivity : AppCompatActivity() {
 
+    private lateinit var sessionManager: SessionManager
+    private var teste: TesteResponse? = null
+    private var paciente: Usuario? = null
+
+    private lateinit var layoutResultados: LinearLayout
+    private lateinit var txtMsgProcessamento: TextView
+    private lateinit var progressRelatorio: ProgressBar
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_resultado_teste)
 
-        val teste = intent.getSerializableExtra("TESTE_SELECIONADO") as? TesteResponse
+        sessionManager = SessionManager(this)
+        
+        teste = intent.getSerializableExtra("TESTE_SELECIONADO") as? TesteResponse
+        paciente = intent.getSerializableExtra("PACIENTE_SELECIONADO") as? Usuario
 
         supportActionBar?.title = "Resultado do Teste"
 
@@ -26,11 +48,14 @@ class ResultadoTesteActivity : AppCompatActivity() {
         val txtStatus = findViewById<TextView>(R.id.txt_detalhe_status)
         val btnVoltar = findViewById<Button>(R.id.btn_voltar_historico)
 
+        layoutResultados = findViewById(R.id.layout_resultados_analise)
+        txtMsgProcessamento = findViewById(R.id.txt_msg_processamento)
+        progressRelatorio = findViewById(R.id.progress_loading_relatorio)
+
         teste?.let {
             txtTipo.text = "Tipo: ${if (it.testType == "MARCHA") "Marcha Estacionária" else "Ponta dos Pés (UTT)"}"
-            
-            txtData.text = "Data: ${formatarData(it.testDateTime)}"
-            txtRepeticoes.text = "Repetições: ${it.totalRepetitionsApp}"
+            txtData.text = "Data: ${formatarDataParaExibicao(it.testDateTime)}"
+            txtRepeticoes.text = "Repetições App: ${it.totalRepetitionsApp}"
             
             txtStatus.text = "Status: ${traduzirStatus(it.status)}"
             val colorRes = when (it.status.uppercase()) {
@@ -40,29 +65,105 @@ class ResultadoTesteActivity : AppCompatActivity() {
                 else -> R.color.black
             }
             txtStatus.setTextColor(ContextCompat.getColor(this, colorRes))
+
+            // Busca os resultados da análise se o teste tiver um ID e não estiver pendente
+            if (it.status.uppercase() != "PENDING" && it.id > 0) {
+                buscarRelatorio()
+            }
         }
 
         btnVoltar.setOnClickListener { finish() }
     }
 
-    private fun formatarData(dataBruta: String): String {
-        val formatos = listOf(
-            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-            "yyyyMMdd_HHmmss"
-        )
+    private fun buscarRelatorio() {
+        val t = teste ?: return
+        val p = paciente ?: return
 
+        progressRelatorio.visibility = View.VISIBLE
+        txtMsgProcessamento.visibility = View.GONE
+        layoutResultados.visibility = View.GONE
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val token = sessionManager.fetchAuthToken()
+                val service = RetrofitClient.create(token)
+                
+                // Chamada correta conforme a nova imagem: /users/tests/{id}/result?email=...
+                val relatorio = service.getRelatorioTeste(
+                    id = t.id,
+                    email = p.email
+                )
+
+                withContext(Dispatchers.Main) {
+                    progressRelatorio.visibility = View.GONE
+                    
+                    if (relatorio.status == "processing") {
+                        txtMsgProcessamento.visibility = View.VISIBLE
+                        txtMsgProcessamento.text = "Os resultados estão sendo processados pela IA. Por favor, aguarde alguns instantes."
+                    } else if (relatorio.totalRepeticoes != null) {
+                        exibirDadosRelatorio(relatorio)
+                    } else {
+                        txtMsgProcessamento.visibility = View.VISIBLE
+                        txtMsgProcessamento.text = "Resultados ainda não disponíveis para este teste."
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progressRelatorio.visibility = View.GONE
+                    txtMsgProcessamento.visibility = View.VISIBLE
+                    txtMsgProcessamento.text = "Não foi possível carregar os resultados da análise."
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun exibirDadosRelatorio(r: RelatorioTesteResponse) {
+        layoutResultados.visibility = View.VISIBLE
+        txtMsgProcessamento.visibility = View.GONE
+        
+        val locale = Locale("pt", "BR")
+
+        findViewById<TextView>(R.id.txt_res_repeticoes_completas).text = "Repetições completas: ${r.repeticoesCompletas} de ${r.totalRepeticoes}"
+        findViewById<TextView>(R.id.txt_res_percentual).text = "Eficiência: ${r.percentualCompletas?.toInt()}%"
+        
+        findViewById<TextView>(R.id.txt_res_altura_media).text = String.format(locale, "Altura média: %.2f cm", r.alturaMedia ?: 0.0)
+        findViewById<TextView>(R.id.txt_res_cadencia).text = String.format(locale, "Cadência: %.2f", r.cadencia ?: 0.0)
+        findViewById<TextView>(R.id.txt_res_amplitude).text = String.format(locale, "Amplitude máxima: %.2f", r.amplitudeMaximaOscilacao ?: 0.0)
+        findViewById<TextView>(R.id.txt_res_tempo).text = String.format(locale, "Tempo total: %.1fs", r.tempoTotalExecucao ?: 0.0)
+        findViewById<TextView>(R.id.txt_res_velocidade).text = String.format(locale, "Velocidade média: %.2f", r.velocidadeMediaOscilacao ?: 0.0)
+        
+        r.desvioPadraoAceleracoes?.let {
+            findViewById<TextView>(R.id.txt_res_desvio).apply {
+                visibility = View.VISIBLE
+                text = String.format(locale, "Desvio padrão: %.2f", it)
+            }
+        }
+        
+        r.indiceEstabilidade?.let {
+            findViewById<TextView>(R.id.txt_res_estabilidade).apply {
+                visibility = View.VISIBLE
+                text = String.format(locale, "Índice de estabilidade: %.2f", it)
+            }
+        }
+
+        r.classificacao?.let {
+            findViewById<TextView>(R.id.txt_res_classificacao).apply {
+                visibility = View.VISIBLE
+                text = "Classificação: $it"
+            }
+        }
+    }
+
+    private fun formatarDataParaExibicao(dataBruta: String): String {
+        val formatos = listOf("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyyMMdd_HHmmss")
         for (formato in formatos) {
             try {
                 val inputFormat = SimpleDateFormat(formato, Locale.getDefault())
-                if (formato.contains("Z")) {
-                    inputFormat.timeZone = TimeZone.getTimeZone("UTC")
-                }
+                if (formato.contains("Z")) inputFormat.timeZone = TimeZone.getTimeZone("UTC")
                 val date = inputFormat.parse(dataBruta)
-                val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                return date?.let { outputFormat.format(it) } ?: dataBruta
-            } catch (e: Exception) {
-                continue
-            }
+                return SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(date!!)
+            } catch (e: Exception) { }
         }
         return dataBruta
     }

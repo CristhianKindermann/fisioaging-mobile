@@ -71,6 +71,7 @@ class HistoricoTestesActivity : AppCompatActivity() {
                     recyclerView.adapter = HistoricoAdapter(testes) { teste ->
                         val intent = Intent(this@HistoricoTestesActivity, ResultadoTesteActivity::class.java)
                         intent.putExtra("TESTE_SELECIONADO", teste)
+                        intent.putExtra("PACIENTE_SELECIONADO", paciente) // Passando o paciente também
                         startActivity(intent)
                     }
                 }
