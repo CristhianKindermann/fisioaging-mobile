@@ -13,6 +13,7 @@ class PacienteAdapter(
     private val onClick: (Usuario) -> Unit
 ) : RecyclerView.Adapter<PacienteAdapter.ViewHolder>() {
 
+    // Mantém uma cópia da lista para gerenciar o filtro sem alterar os dados originais
     private var pacientesExibidos: MutableList<Usuario> = listaOriginal.toMutableList()
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -22,6 +23,8 @@ class PacienteAdapter(
 
     fun filtrar(query: String) {
         val filtro = query.lowercase().trim()
+
+        // Restaura a lista completa se a busca for limpa, caso contrário filtra por nome ou CPF
         pacientesExibidos = if (filtro.isEmpty()) {
             listaOriginal.toMutableList()
         } else {
@@ -30,6 +33,8 @@ class PacienteAdapter(
                         (it.cpf?.contains(filtro) ?: false)
             }.toMutableList()
         }
+
+        // Avisa a RecyclerView para redesenhar os itens na tela com base na nova lista
         notifyDataSetChanged()
     }
 
@@ -40,8 +45,11 @@ class PacienteAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val paciente = pacientesExibidos[position]
+
         holder.txtNome.text = paciente.name
         holder.txtCpf.text = "CPF: ${paciente.cpf}"
+
+        // passa o objeto do paciente selecionado de volta para a Activity
         holder.itemView.setOnClickListener { onClick(paciente) }
     }
 

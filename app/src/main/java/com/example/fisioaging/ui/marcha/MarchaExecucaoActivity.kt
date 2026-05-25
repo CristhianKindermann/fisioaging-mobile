@@ -23,9 +23,6 @@ import org.json.JSONObject
 import java.io.FileOutputStream
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
-import java.time.LocalDate
-import java.time.Period
-import java.time.format.DateTimeFormatter
 import java.util.*
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -55,6 +52,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     private var tempoTotalEmMillis: Long = 2 * 60 * 1000
 
     private var timerPreparacao: CountDownTimer? = null
+
     // Sensores
     private lateinit var sensorManager: SensorManager
     private var acelerometro: Sensor? = null
@@ -71,7 +69,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     private var ultimoTempo = 0L
     private var fase = 0
 
-    //para os sons
+    // Som
     private var toneGenerator: ToneGenerator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +104,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_modo_apresentacao -> {
+                // Alterna entre o modo padrão e o modo curto para apresentações
                 if (tempoTotalEmMillis == 2 * 60 * 1000L) {
                     tempoTotalEmMillis = 30 * 1000L
                     item.title = "Modo Padrão (2 min)"
@@ -141,6 +140,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     private fun configurarSensores() {
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
 
+        // Tenta usar a aceleração linear (sem a gravidade), se não tiver, usa o acelerômetro normal
         val sensorLinear = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
         acelerometro = sensorLinear ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         giroscopio = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
@@ -193,6 +193,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun iniciarTimerPreparacao() {
+        // Contagem de 3 segundos para posicionar o aparelho
         timerPreparacao = object : CountDownTimer(3000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val segundosRestantes = (millisUntilFinished / 1000) + 1
@@ -203,7 +204,6 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
             override fun onFinish() {
                 toneGenerator?.stopTone()
-
                 toneGenerator?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
 
                 iniciarColeta()
@@ -233,6 +233,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
                 registro.put("sensor", "acelerometro")
                 dadosColetados.add(registro)
 
+                // Lógica simples de detecção de pico no eixo Y para contar as repetições
                 val y = e.values[1]
                 when (fase) {
                     0 -> if (y > 1.5) fase = 1
@@ -294,6 +295,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
         val horaStr = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
         val nomeArquivo = "MARCHA_${dataStr}_${horaStr}_${idPac}_${nomePac}_${emailCodificado}.json"
 
+        // Monta a estrutura raiz do JSON conforme o Swagger do backend
         val json = JSONObject()
         json.put("tipo_teste", "MARCHA")
         json.put("data_hora", "${dataStr}_${horaStr}")
@@ -304,7 +306,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
         json.put("email_profissional", emailProfissional)
         json.put("sexo", generoPac)
         json.put("idade", idadePac)
-        json.put("massa_kg", 70.0)
+        json.put("massa_kg", 70.0) // Fixo por enquanto, ideal é vir do cadastro
         json.put("registros", JSONArray(dadosColetados))
         json.put("unidadeSaudeCnpj", cnpjUnidade)
 
@@ -336,6 +338,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun atualizarUI(estado: EstadoTeste) {
+        // Esconde todos os painéis e mostra só o que precisa
         layoutBotaoPlay.visibility = View.GONE
         layoutBotoesRodando.visibility = View.GONE
         layoutBotoesConcluido.visibility = View.GONE
@@ -348,6 +351,9 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
                 layoutBotaoPlay.visibility = View.VISIBLE
             }
+            EstadoTeste.PREPARANDO -> {
+                layoutBotoesRodando.visibility = View.VISIBLE
+            }
             EstadoTeste.RODANDO -> {
                 layoutBotoesRodando.visibility = View.VISIBLE
             }
@@ -355,8 +361,6 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
                 textResultado.text = "$contagemRepeticoes Repetições"
                 layoutBotoesConcluido.visibility = View.VISIBLE
             }
-
-            else -> {}
         }
     }
 

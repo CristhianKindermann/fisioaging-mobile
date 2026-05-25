@@ -32,10 +32,12 @@ class SincroniaAdapter(private val testes: MutableList<TesteSalvo>) :
         holder.nomePaciente.text = "Paciente: ${teste.nomePaciente}"
         holder.tipoTeste.text = "Tipo: ${teste.tipoTeste}"
 
-        // Lógica do Checkbox
+        // Remove o listener temporariamente para evitar o bug onde a reciclagem da View
+        // altera os estados de itens que estão fora da tela
         holder.checkBox.setOnCheckedChangeListener(null)
         holder.checkBox.isChecked = teste.isSelecionado
 
+        // Grava a seleção do usuário de volta no objeto
         holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
             teste.isSelecionado = isChecked
         }
@@ -43,6 +45,7 @@ class SincroniaAdapter(private val testes: MutableList<TesteSalvo>) :
 
     override fun getItemCount() = testes.size
 
+    // Utilitário para a Activity pegar rapidamente só o que foi marcado para envio/exclusão
     fun getItensSelecionados(): List<TesteSalvo> {
         return testes.filter { it.isSelecionado }
     }

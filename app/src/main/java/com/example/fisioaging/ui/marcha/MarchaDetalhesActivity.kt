@@ -19,9 +19,12 @@ class MarchaDetalhesActivity : AppCompatActivity() {
 
         paciente = intent.getSerializableExtra("PACIENTE_SELECIONADO") as? Usuario
 
+        // Configura o player e o caminho do vídeo de instrução
         val videoView = findViewById<VideoView>(R.id.videoView)
         val videoUri = Uri.parse("android.resource://${packageName}/${R.raw.marcha}")
         videoView.setVideoURI(videoUri)
+
+        // Mantém o vídeo em loop
         videoView.setOnPreparedListener { mediaPlayer -> mediaPlayer.isLooping = false }
         videoView.setOnCompletionListener {
             videoView.postDelayed({ videoView.start() }, 1500)
@@ -39,6 +42,7 @@ class MarchaDetalhesActivity : AppCompatActivity() {
         buttonIniciarTeste.setOnClickListener {
             val intentExecucao = Intent(this, MarchaExecucaoActivity::class.java)
 
+            // manda os dados do paciente para a próxima tela
             intentExecucao.putExtra("PACIENTE_SELECIONADO", paciente)
 
             startActivity(intentExecucao)

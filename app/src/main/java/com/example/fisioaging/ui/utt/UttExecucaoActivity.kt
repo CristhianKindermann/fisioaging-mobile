@@ -27,12 +27,13 @@ import java.time.Period
 import java.time.format.DateTimeFormatter
 import android.media.AudioManager
 import android.media.ToneGenerator
-private enum class EstadoUTT { PRONTO, PREPARANDO , RODANDO, CONCLUIDO }
+
+private enum class EstadoUTT { PRONTO, PREPARANDO, RODANDO, CONCLUIDO }
 
 class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
+    // UI
     private lateinit var textTimer: TextView
-
     private var pesoPaciente: Double = 0.0
     private lateinit var textResultado: TextView
     private lateinit var lblStatus: TextView
@@ -48,22 +49,27 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var btnDiscard: ImageButton
     private lateinit var btnSave: ImageButton
 
+    // Timers
     private var timer: CountDownTimer? = null
-    private val tempoTotalEmMillis: Long = 30 * 1000
+    private val tempoTotalEmMillis: Long = 30 * 1000 // Teste UTT tem duração fixa de 30 segundos
     private var timerPreparacao: CountDownTimer? = null
 
+    // Sensores
     private lateinit var sensorManager: SensorManager
     private var acelerometro: Sensor? = null
 
+    // Dados e Estado
     private val dadosColetados = mutableListOf<JSONObject>()
     private var tempoInicioTeste: Long = 0
-
     private var paciente: Usuario? = null
     private lateinit var sessionManager: SessionManager
 
+    // Algoritmo de contagem
     private var contagemRepeticoes = 0
     private var ultimoTempo = 0L
     private var fase = 0
+
+    // Feedback sonoro
     private var toneGenerator: ToneGenerator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,6 +77,8 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
         setContentView(R.layout.activity_utt_execucao)
 
         paciente = intent.getSerializableExtra("PACIENTE_SELECIONADO") as? Usuario
+        pesoPaciente = intent.getDoubleExtra("PESO_PACIENTE", 0.0)
+
         supportActionBar?.title = "UTT: ${paciente?.name ?: "Ponta dos Pés"}"
 
         sessionManager = SessionManager(this)
@@ -82,9 +90,6 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
         toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
 
         atualizarUI(EstadoUTT.PRONTO)
-
-        paciente = intent.getSerializableExtra("PACIENTE_SELECIONADO") as? Usuario
-        pesoPaciente = intent.getDoubleExtra("PESO_PACIENTE", 0.0)
     }
 
     private fun inicializarUI() {
@@ -106,6 +111,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
     private fun configurarSensor() {
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        // Aceleração linear remove a influência da gravidade, isolando o movimento real do paciente
         acelerometro = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
     }
 
@@ -165,6 +171,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
                 registro.put("z", e.values[2])
                 dadosColetados.add(registro)
 
+                // Lógica de detecção de picos no eixo Y (movimento vertical de ponta de pé)
                 val y = e.values[1]
                 when (fase) {
                     0 -> if (y > 1.2) fase = 1
@@ -181,8 +188,6 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
         }
     }
 
-
-
     private fun calcularIdade(dataNascString: String?): Int {
         if (dataNascString.isNullOrEmpty()) return 0
         return try {
@@ -196,6 +201,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun iniciarTimerPreparacao() {
+        // Timer regressivo de 3 segundos com feedback sonoro para preparação
         timerPreparacao = object : CountDownTimer(3000, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val segundosRestantes = (millisUntilFinished / 1000) + 1
@@ -206,7 +212,6 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
             override fun onFinish() {
                 toneGenerator?.stopTone()
-
                 toneGenerator?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 800)
 
                 iniciarColeta()
@@ -234,6 +239,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
         val horaStr = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
         val nomeArquivo = "UTT_${dataStr}_${horaStr}_${idPac}_${nomePac}_${emailCodificado}.json"
 
+        // Monta o payload final conforme contrato do Swagger
         val json = JSONObject()
         json.put("tipo_teste", "UTT")
         json.put("data_hora", "${dataStr}_${horaStr}")
@@ -244,7 +250,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
         json.put("email_profissional", emailProfissional)
         json.put("sexo", generoPac)
         json.put("idade", idadePac)
-        json.put("massa_kg", pesoPaciente)
+        json.put("massa_kg", pesoPaciente) // Informado manualmente na tela anterior
         json.put("registros", JSONArray(dadosColetados))
         json.put("unidadeSaudeCnpj", cnpjUnidade)
 
@@ -273,6 +279,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun atualizarUI(estado: EstadoUTT) {
+        // Gerencia a visibilidade dos blocos da interface
         layoutBotaoPlay.visibility = View.GONE
         layoutBotoesRodando.visibility = View.GONE
         layoutBotoesConcluido.visibility = View.GONE
@@ -282,25 +289,29 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
                 textTimer.text = "0:30"
                 layoutBotaoPlay.visibility = View.VISIBLE
             }
-            EstadoUTT.RODANDO -> layoutBotoesRodando.visibility = View.VISIBLE
+            EstadoUTT.PREPARANDO -> {
+                layoutBotoesRodando.visibility = View.VISIBLE
+            }
+            EstadoUTT.RODANDO -> {
+                layoutBotoesRodando.visibility = View.VISIBLE
+            }
             EstadoUTT.CONCLUIDO -> {
                 textResultado.text = "$contagemRepeticoes Repetições"
                 layoutBotoesConcluido.visibility = View.VISIBLE
             }
-
-            else -> {}
         }
     }
+
     private fun pararColeta() {
         timer?.cancel()
         sensorManager.unregisterListener(this)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
     override fun onDestroy() {
         super.onDestroy()
         pararColeta()
         toneGenerator?.release()
     }
-
 }

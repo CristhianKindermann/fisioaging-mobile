@@ -24,6 +24,7 @@ class LoginActivity : AppCompatActivity() {
 
         val sessionManager = SessionManager(this)
 
+        // Pula a tela de login se já houver um token salvo
         if (sessionManager.fetchAuthToken() != null) {
             iniciarApp()
         }
@@ -45,9 +46,12 @@ class LoginActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                //Faz o login inicial para pegar o token e o ID do user
                 val loginResponse = authService.login(LoginRequest(email, pass))
                 val idLogado = loginResponse.userId.toInt()
                 val tokenRecebido = loginResponse.token
+
+                //Cria um cliente autenticado para pegar o CNPJ
                 val authenticatedService = RetrofitClient.create(tokenRecebido)
                 val usuarioCompleto = authenticatedService.getUsuarioById(idLogado)
 
@@ -55,6 +59,7 @@ class LoginActivity : AppCompatActivity() {
                     session.saveAuthToken(tokenRecebido)
                     session.saveUserId(idLogado)
                     session.saveProfessionalEmail(email)
+
                     val cnpj = usuarioCompleto.healthUnit?.cnpj ?: ""
                     session.saveHealthUnitCnpj(cnpj)
 
@@ -62,7 +67,7 @@ class LoginActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    e.printStackTrace() // Isso vai imprimir no Logcat o motivo exato (ex: 403 Forbidden)
+                    e.printStackTrace()
                     Toast.makeText(this@LoginActivity, "Falha na autenticação ou busca de dados", Toast.LENGTH_LONG).show()
                 }
             }

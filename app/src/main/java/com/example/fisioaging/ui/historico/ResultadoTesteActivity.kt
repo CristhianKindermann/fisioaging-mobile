@@ -36,7 +36,8 @@ class ResultadoTesteActivity : AppCompatActivity() {
         setContentView(R.layout.activity_resultado_teste)
 
         sessionManager = SessionManager(this)
-        
+
+        // Pega os dados enviados da listagem
         teste = intent.getSerializableExtra("TESTE_SELECIONADO") as? TesteResponse
         paciente = intent.getSerializableExtra("PACIENTE_SELECIONADO") as? Usuario
 
@@ -56,7 +57,7 @@ class ResultadoTesteActivity : AppCompatActivity() {
             txtTipo.text = "Tipo: ${if (it.testType == "MARCHA") "Marcha Estacionária" else "Ponta dos Pés (UTT)"}"
             txtData.text = "Data: ${formatarDataParaExibicao(it.testDateTime)}"
             txtRepeticoes.text = "Repetições App: ${it.totalRepetitionsApp}"
-            
+
             txtStatus.text = "Status: ${traduzirStatus(it.status)}"
             val colorRes = when (it.status.uppercase()) {
                 "PENDING" -> R.color.status_pending
@@ -66,7 +67,7 @@ class ResultadoTesteActivity : AppCompatActivity() {
             }
             txtStatus.setTextColor(ContextCompat.getColor(this, colorRes))
 
-            // Busca os resultados da análise se o teste tiver um ID e não estiver pendente
+            // Só tenta buscar o relatório se o teste já foi para o servidor
             if (it.status.uppercase() != "PENDING" && it.id > 0) {
                 buscarRelatorio()
             }
@@ -82,13 +83,13 @@ class ResultadoTesteActivity : AppCompatActivity() {
         progressRelatorio.visibility = View.VISIBLE
         txtMsgProcessamento.visibility = View.GONE
         layoutResultados.visibility = View.GONE
-        
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val token = sessionManager.fetchAuthToken()
                 val service = RetrofitClient.create(token)
-                
-                // Chamada correta conforme a nova imagem: /users/tests/{id}/result?email=...
+
+                // Rota: /users/tests/{id}/result
                 val relatorio = service.getRelatorioTeste(
                     id = t.id,
                     email = p.email
@@ -96,22 +97,22 @@ class ResultadoTesteActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     progressRelatorio.visibility = View.GONE
-                    
+
                     if (relatorio.status == "processing") {
                         txtMsgProcessamento.visibility = View.VISIBLE
-                        txtMsgProcessamento.text = "Os resultados estão sendo processados pela IA. Por favor, aguarde alguns instantes."
+                        txtMsgProcessamento.text = "Resultados em processamento no servidor. Aguarde."
                     } else if (relatorio.totalRepeticoes != null) {
                         exibirDadosRelatorio(relatorio)
                     } else {
                         txtMsgProcessamento.visibility = View.VISIBLE
-                        txtMsgProcessamento.text = "Resultados ainda não disponíveis para este teste."
+                        txtMsgProcessamento.text = "Dados do relatório indisponíveis."
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressRelatorio.visibility = View.GONE
                     txtMsgProcessamento.visibility = View.VISIBLE
-                    txtMsgProcessamento.text = "Não foi possível carregar os resultados da análise."
+                    txtMsgProcessamento.text = "Erro de conexão ao buscar os resultados."
                     e.printStackTrace()
                 }
             }
@@ -121,25 +122,25 @@ class ResultadoTesteActivity : AppCompatActivity() {
     private fun exibirDadosRelatorio(r: RelatorioTesteResponse) {
         layoutResultados.visibility = View.VISIBLE
         txtMsgProcessamento.visibility = View.GONE
-        
+
         val locale = Locale("pt", "BR")
 
         findViewById<TextView>(R.id.txt_res_repeticoes_completas).text = "Repetições completas: ${r.repeticoesCompletas} de ${r.totalRepeticoes}"
         findViewById<TextView>(R.id.txt_res_percentual).text = "Eficiência: ${r.percentualCompletas?.toInt()}%"
-        
+
         findViewById<TextView>(R.id.txt_res_altura_media).text = String.format(locale, "Altura média: %.2f cm", r.alturaMedia ?: 0.0)
         findViewById<TextView>(R.id.txt_res_cadencia).text = String.format(locale, "Cadência: %.2f", r.cadencia ?: 0.0)
         findViewById<TextView>(R.id.txt_res_amplitude).text = String.format(locale, "Amplitude máxima: %.2f", r.amplitudeMaximaOscilacao ?: 0.0)
         findViewById<TextView>(R.id.txt_res_tempo).text = String.format(locale, "Tempo total: %.1fs", r.tempoTotalExecucao ?: 0.0)
         findViewById<TextView>(R.id.txt_res_velocidade).text = String.format(locale, "Velocidade média: %.2f", r.velocidadeMediaOscilacao ?: 0.0)
-        
+
         r.desvioPadraoAceleracoes?.let {
             findViewById<TextView>(R.id.txt_res_desvio).apply {
                 visibility = View.VISIBLE
                 text = String.format(locale, "Desvio padrão: %.2f", it)
             }
         }
-        
+
         r.indiceEstabilidade?.let {
             findViewById<TextView>(R.id.txt_res_estabilidade).apply {
                 visibility = View.VISIBLE
@@ -163,7 +164,8 @@ class ResultadoTesteActivity : AppCompatActivity() {
                 if (formato.contains("Z")) inputFormat.timeZone = TimeZone.getTimeZone("UTC")
                 val date = inputFormat.parse(dataBruta)
                 return SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(date!!)
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+            }
         }
         return dataBruta
     }

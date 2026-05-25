@@ -20,6 +20,7 @@ class UttDetalhesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_utt_detalhes)
 
+        // Recupera o paciente selecionado para manter o contexto do teste
         paciente = intent.getSerializableExtra("PACIENTE_SELECIONADO") as? Usuario
 
         supportActionBar?.title = "Detalhes UTT"
@@ -27,6 +28,7 @@ class UttDetalhesActivity : AppCompatActivity() {
             supportActionBar?.subtitle = "Paciente: ${paciente?.name}"
         }
 
+        // Configura o vídeo de instrução com repetição e intervalo de segurança
         val videoView = findViewById<VideoView>(R.id.videoView2)
         val videoUri = Uri.parse("android.resource://${packageName}/${R.raw.utt}")
         videoView.setVideoURI(videoUri)
@@ -39,6 +41,7 @@ class UttDetalhesActivity : AppCompatActivity() {
 
         btnIniciar.isEnabled = false
 
+        // Trava de segurança: só permite iniciar a coleta de dados se o examinador informar o peso
         edtPeso.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -51,8 +54,11 @@ class UttDetalhesActivity : AppCompatActivity() {
             val pesoDigitado = edtPeso.text.toString().toDoubleOrNull() ?: 0.0
 
             val intentExec = Intent(this, UttExecucaoActivity::class.java)
+
+            // Repassa o paciente e a variável de peso (exclusiva do UTT) para a tela de sensores
             intentExec.putExtra("PACIENTE_SELECIONADO", paciente)
             intentExec.putExtra("PESO_PACIENTE", pesoDigitado)
+
             startActivity(intentExec)
             finish()
         }

@@ -17,8 +17,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.log
 import java.net.URLDecoder
+
 class SincroniaActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView
@@ -55,18 +55,17 @@ class SincroniaActivity : AppCompatActivity() {
     }
 
     private fun carregarTestesSalvos() {
-
         listaTestesSalvos.clear()
         val diretorioArquivos = filesDir
 
-        // Filtra arquivos JSON que seguem o padrão TIPO_DATA_HORA_ID_NOME.json
+        // Filtra apenas os arquivos JSON gerados pelos testes do app
         val arquivos = diretorioArquivos.listFiles { _, nome ->
             nome.endsWith(".json") && (nome.startsWith("MARCHA") || nome.startsWith("UTT"))
         }
 
         arquivos?.forEach { arquivo ->
             try {
-                // Remove o ".json" e divide o nome pelas sublinhas
+                // Extrai os metadados do paciente e do teste usando o nome do arquivo
                 val partes = arquivo.name.replace(".json", "").split("_")
 
                 if (partes.size >= 5) {
@@ -79,7 +78,6 @@ class SincroniaActivity : AppCompatActivity() {
 
                     val tipoFormatado = if (tipoBruto == "MARCHA") "Marcha Estacionária" else "Ponta dos Pés (UTT)"
 
-                    // Formata a exibição: "21/04/2026 às 16:30"
                     val infoFormatada = "${dataBruta.substring(6,8)}/${dataBruta.substring(4,6)}/${dataBruta.substring(0,4)} às ${horaBruta.substring(0,2)}:${horaBruta.substring(2,4)}"
 
                     listaTestesSalvos.add(
@@ -93,9 +91,9 @@ class SincroniaActivity : AppCompatActivity() {
                         )
                     )
                 } else {
+                    // Fallback para arquivos antigos ou mal formatados
                     listaTestesSalvos.add(
                         TesteSalvo(arquivo, "Arquivo Antigo", 0L, "Desconhecido", "desconhecido@teste.com","N/A")
-
                     )
                 }
             } catch (e: Exception) {
@@ -103,12 +101,12 @@ class SincroniaActivity : AppCompatActivity() {
             }
         }
 
+        // Ordena para exibir os testes mais recentes primeiro
         listaTestesSalvos.sortByDescending { it.arquivo.lastModified() }
         adapter.notifyDataSetChanged()
     }
 
     private fun apagarArquivosSelecionados() {
-
         val selecionados = adapter.getItensSelecionados()
         if (selecionados.isEmpty()) {
             Toast.makeText(this, "Nenhum teste selecionado", Toast.LENGTH_SHORT).show()
@@ -121,7 +119,6 @@ class SincroniaActivity : AppCompatActivity() {
     }
 
     private fun sincronizarArquivosSelecionados() {
-
         val selecionados = adapter.getItensSelecionados()
 
         if (selecionados.isEmpty()) {
@@ -132,7 +129,6 @@ class SincroniaActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val apiSemToken = RetrofitClient.create()
-
                 val loginResponse = apiSemToken.login(
                     LoginRequest(
                         email = "string",
@@ -141,28 +137,22 @@ class SincroniaActivity : AppCompatActivity() {
                 )
 
                 val token = loginResponse.token
-
-                Log.d("LOGIN", "Token: $token")
-
                 val api = RetrofitClient.create(token)
-
                 val gson = Gson()
 
                 selecionados.forEach { testeSalvo ->
                     try {
                         val json = testeSalvo.arquivo.readText()
-
                         val request = gson.fromJson(json, TesteRequest::class.java)
-
                         val emailDecodificado = URLDecoder.decode(testeSalvo.emailPaciente, "UTF-8")
 
+                        // Dispara o payload para a AWS
                         val response = api.enviarTeste(
                             email = emailDecodificado.trim(),
                             body = request
                         )
 
-                        Log.d("RESPONSE", response.toString())
-
+                        // Apaga o arquivo local apenas se o servidor confirmar o recebimento
                         if (response.isSuccessful) {
                             testeSalvo.arquivo.delete()
                         } else {
@@ -181,9 +171,8 @@ class SincroniaActivity : AppCompatActivity() {
 
             } catch (e: Exception) {
                 e.printStackTrace()
-
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@SincroniaActivity, "Erro ao autenticar", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@SincroniaActivity, "Erro ao autenticar ou enviar dados", Toast.LENGTH_LONG).show()
                 }
             }
         }

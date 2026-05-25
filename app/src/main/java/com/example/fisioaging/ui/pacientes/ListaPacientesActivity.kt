@@ -42,12 +42,13 @@ class ListaPacientesActivity : AppCompatActivity() {
 
         recyclerView.layoutManager = LinearLayoutManager(this)
 
+        // Força a barra de pesquisa a já abrir expandida para facilitar o uso
         searchView.onActionViewExpanded()
-
         searchView.setOnSearchClickListener {
             searchView.requestFocus()
         }
 
+        // Ajustes visuais para melhorar o contraste do texto e ícone da SearchView
         val searchEditText = searchView.findViewById<android.widget.EditText>(androidx.appcompat.R.id.search_src_text)
         searchEditText.setTextColor(android.graphics.Color.BLACK)
         searchEditText.setHintTextColor(android.graphics.Color.GRAY)
@@ -55,6 +56,7 @@ class ListaPacientesActivity : AppCompatActivity() {
         val searchIcon = searchView.findViewById<android.widget.ImageView>(androidx.appcompat.R.id.search_mag_icon)
         searchIcon.setColorFilter(android.graphics.Color.BLACK)
 
+        // Filtra a lista em tempo real conforme o usuário digita
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 return false
@@ -78,7 +80,6 @@ class ListaPacientesActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-
             R.id.action_logout -> {
                 deslogar()
                 true
@@ -88,6 +89,7 @@ class ListaPacientesActivity : AppCompatActivity() {
     }
 
     private fun deslogar() {
+        // Limpa os dados locais e impede o retorno via botão de voltar
         sessionManager.clearSession()
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -102,8 +104,9 @@ class ListaPacientesActivity : AppCompatActivity() {
             try {
                 val token = sessionManager.fetchAuthToken()
                 val service = RetrofitClient.create(token)
-                val todosUsuarios = service.getUsuarios()
 
+                // Busca todos os usuários e separa apenas os que têm o perfil de paciente
+                val todosUsuarios = service.getUsuarios()
                 val pacientes = todosUsuarios.filter { it.profile == "Paciente" }
 
                 withContext(Dispatchers.Main) {
@@ -113,6 +116,7 @@ class ListaPacientesActivity : AppCompatActivity() {
                         Toast.makeText(this@ListaPacientesActivity, "Nenhum paciente encontrado.", Toast.LENGTH_SHORT).show()
                     }
 
+                    // Configura o adapter enviando o paciente selecionado para a tela de histórico
                     adapter = PacienteAdapter(pacientes) { paciente ->
                         val intent = Intent(this@ListaPacientesActivity, HistoricoTestesActivity::class.java)
                         intent.putExtra("PACIENTE_SELECIONADO", paciente)
