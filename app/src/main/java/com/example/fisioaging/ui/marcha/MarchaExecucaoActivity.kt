@@ -42,7 +42,6 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
     private lateinit var btnPlay: ImageButton
     private lateinit var btnRestartRodando: ImageButton
-    private lateinit var btnStop: ImageButton
     private lateinit var btnRestartConcluido: ImageButton
     private lateinit var btnDiscard: ImageButton
     private lateinit var btnSave: ImageButton
@@ -131,7 +130,6 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
         btnPlay = findViewById(R.id.btn_play)
         btnRestartRodando = findViewById(R.id.btn_restart_rodando)
-        btnStop = findViewById(R.id.btn_stop)
         btnRestartConcluido = findViewById(R.id.btn_restart_concluido)
         btnDiscard = findViewById(R.id.btn_discard)
         btnSave = findViewById(R.id.btn_save)
@@ -158,10 +156,6 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
             atualizarUI(EstadoTeste.PRONTO)
         }
 
-        btnStop.setOnClickListener {
-            pararColeta()
-            atualizarUI(EstadoTeste.CONCLUIDO)
-        }
 
         btnRestartConcluido.setOnClickListener {
             atualizarUI(EstadoTeste.PRONTO)
@@ -301,7 +295,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
         json.put("data_hora", "${dataStr}_${horaStr}")
         json.put("sensor", "ANDROID")
         json.put("frequencia", 50)
-        json.put("total_repeticoes_app", contagemRepeticoes)
+       // json.put("total_repeticoes_app", contagemRepeticoes)
         json.put("id_profissional", idProfissional)
         json.put("email_profissional", emailProfissional)
         json.put("sexo", generoPac)
