@@ -7,8 +7,6 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -18,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.fisioaging.R
 import com.example.fisioaging.model.Usuario
 import com.example.fisioaging.util.SessionManager
+import com.example.fisioaging.util.TestConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.FileOutputStream
@@ -48,7 +47,7 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
     // Timer
     private var timer: CountDownTimer? = null
-    private var tempoTotalEmMillis: Long = 2 * 60 * 1000
+    private val tempoTotalEmMillis: Long = TestConfig.DURACAO_MARCHA_PADRAO_MS
 
     private var timerPreparacao: CountDownTimer? = null
 
@@ -86,37 +85,6 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
         toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
         atualizarUI(EstadoTeste.PRONTO)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_marcha_execucao, menu)
-
-        val itemModo = menu?.findItem(R.id.action_modo_apresentacao)
-        if (tempoTotalEmMillis == 30 * 1000L) {
-            itemModo?.title = "Modo Padrão (2 min)"
-        } else {
-            itemModo?.title = "Modo Apresentação (30s)"
-        }
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_modo_apresentacao -> {
-                // Alterna entre o modo padrão e o modo curto para apresentações
-                if (tempoTotalEmMillis == 2 * 60 * 1000L) {
-                    tempoTotalEmMillis = 30 * 1000L
-                    item.title = "Modo Padrão (2 min)"
-                    textTimer.text = "0:30"
-                } else {
-                    tempoTotalEmMillis = 2 * 60 * 1000L
-                    item.title = "Modo Apresentação (30s)"
-                    textTimer.text = "2:00"
-                }
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
 
     private fun inicializarUI() {
@@ -187,8 +155,8 @@ class MarchaExecucaoActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun iniciarTimerPreparacao() {
-        // Contagem de 3 segundos para posicionar o aparelho
-        timerPreparacao = object : CountDownTimer(3000, 1000) {
+        // Contagem regressiva para posicionar o aparelho
+        timerPreparacao = object : CountDownTimer(TestConfig.TEMPO_PREPARACAO_MS, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val segundosRestantes = (millisUntilFinished / 1000) + 1
                 textTimer.text = segundosRestantes.toString()

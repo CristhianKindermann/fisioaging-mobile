@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.fisioaging.R
 import com.example.fisioaging.model.Usuario
 import com.example.fisioaging.util.SessionManager
+import com.example.fisioaging.util.TestConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.FileOutputStream
@@ -50,7 +51,7 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
     // Timers
     private var timer: CountDownTimer? = null
-    private val tempoTotalEmMillis: Long = 30 * 1000 // Teste UTT tem duração fixa de 30 segundos
+    private val tempoTotalEmMillis: Long = TestConfig.DURACAO_UTT_MS
     private var timerPreparacao: CountDownTimer? = null
 
     // Sensores
@@ -283,7 +284,8 @@ class UttExecucaoActivity : AppCompatActivity(), SensorEventListener {
 
         when (estado) {
             EstadoUTT.PRONTO -> {
-                textTimer.text = "0:30"
+                val sec = (tempoTotalEmMillis / 1000)
+                textTimer.text = String.format("0:%02d", sec)
                 layoutBotaoPlay.visibility = View.VISIBLE
             }
             EstadoUTT.PREPARANDO -> {
