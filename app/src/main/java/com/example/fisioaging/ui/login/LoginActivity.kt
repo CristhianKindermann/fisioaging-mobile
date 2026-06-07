@@ -32,13 +32,8 @@ class LoginActivity : AppCompatActivity() {
             val email = findViewById<EditText>(R.id.edt_email).text.toString().trim()
             val pass = findViewById<EditText>(R.id.edt_password).text.toString()
 
-            if (email.isEmpty()) {
-                Toast.makeText(this, "O E-mail é obrigatório", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            if (pass.isEmpty()) {
-                Toast.makeText(this, "A senha é obrigatória", Toast.LENGTH_SHORT).show()
+            if (email.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -47,24 +42,28 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun efetuarLogin(email: String, pass: String, session: SessionManager) {
-        val authService = RetrofitClient.create(null)
+        val authService = RetrofitClient.instance
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // 1. Faz o login para obter o token
                 val loginResponse = authService.login(LoginRequest(email, pass))
                 val idLogado = loginResponse.userId.toInt()
                 val tokenRecebido = loginResponse.token
 
+                // 2. Busca os dados completos do usuário para verificar o perfil
                 val authenticatedService = RetrofitClient.create(tokenRecebido)
                 val usuarioCompleto = authenticatedService.getUsuarioById(idLogado)
 
-                val perfil = usuarioCompleto.profile?.uppercase() ?: ""
+                val perfil = usuarioCompleto.profile.uppercase()
 
                 if (perfil == "PROFISSIONAL" || perfil == "ADMIN") {
                     withContext(Dispatchers.Main) {
+                        // 3. Salva os dados da sessão
                         session.saveAuthToken(tokenRecebido)
                         session.saveUserId(idLogado)
-                        session.saveProfessionalEmail(usuarioCompleto.email ?: email)
+                        session.saveProfessionalEmail(usuarioCompleto.email)
+                        session.saveUserPassword(pass) // Salva a senha para sincronização offline posterior
 
                         val cnpj = usuarioCompleto.healthUnit?.cnpj ?: ""
                         session.saveHealthUnitCnpj(cnpj)
@@ -80,15 +79,7 @@ class LoginActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     e.printStackTrace()
-
-                    val errorMessage = e.message ?: ""
-                    if (errorMessage.contains("404") || errorMessage.contains("not found", ignoreCase = true)) {
-                        Toast.makeText(this@LoginActivity, "O E-mail inválido", Toast.LENGTH_LONG).show()
-                    } else if (errorMessage.contains("401") || errorMessage.contains("unauthorized", ignoreCase = true)) {
-                        Toast.makeText(this@LoginActivity, "Senha inválida", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(this@LoginActivity, "Falha na autenticação ou busca de dados", Toast.LENGTH_LONG).show()
-                    }
+                    Toast.makeText(this@LoginActivity, "Falha na autenticação: Verifique seus dados", Toast.LENGTH_LONG).show()
                 }
             }
         }
