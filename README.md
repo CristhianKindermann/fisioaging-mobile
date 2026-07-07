@@ -27,6 +27,16 @@ Neste repositório, mantive o histórico completo de branches originais para dem
 
 ---
 
+## 📸 Demonstração do Aplicativo
+
+*(Fluxo de telas extraído da documentação técnica do projeto devido ao encerramento dos servidores de homologação)*
+
+<p align="center">
+  <img src="gif-mobille.gif" width="40%" alt="Demonstração das telas do FisioAging" />
+</p>
+
+---
+
 ## 🛠️ Como Executar o Projeto Localmente
 
 ### Pré-requisitos
